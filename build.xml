@@ -1,0 +1,74 @@
+<?xml version="1.0" standalone="yes"?>
+<project name="rtmfpdata" default="swc" basedir="." xmlns:artifact="urn:maven-artifact-ant">
+  <property name="asrc.dir" location="src/main/as"/>
+  <property name="deploy.dir" location="dist"/>
+
+  <property name="ooo-build.vers" value="2.5"/>
+  <ant antfile="etc/bootstrap.xml"/>
+  <import file="${user.home}/.m2/ooo-build/${ooo-build.vers}/ooo-build.xml"/>
+
+  <target name="clean" description="Removes all generated files and directories">
+    <delete dir="${deploy.dir}"/>
+  </target>
+
+  <target name="prepare" depends="-init-ooo">
+    <mkdir dir="${deploy.dir}"/>
+    <mavendep pom="pom.xml" pathProp="aslib.path"/>
+    <maventaskdef groupId="com.threerings.ant" artifactId="actionscript" version="1.6"/>
+  </target>
+
+  <target name="swc" depends="prepare" description="Builds the library (.swc file)">
+    <compc srcdir="${asrc.dir}" libpath="${aslib.path}"
+      dest="${deploy.dir}/${ant.project.name}.swc">
+      <arg value="-swf-version=13"/>
+    </compc>
+  </target>
+
+   <!--
+     Fetches all the jars, source jars and javadoc jars from pom.xml and copies them to libs, libs-sources, and libs-javadoc.
+     Also copies any non-Maven jars from locallibs into libs.
+    -->
+   <target name="fetchDependencies" depends="-init-maven-ant">
+      <artifact:dependencies filesetId="dependency.fileset"
+        sourcesFilesetId="sources.dependency.fileset"
+        javadocFilesetId="javadoc.dependency.fileset"
+        versionsId="dependency.versions">
+        <pom file="pom.xml"/>
+      </artifact:dependencies>
+        <copy todir="maven/libs" flatten="true">
+          <fileset refid="dependency.fileset" />
+        </copy>
+        <copy todir="maven/sources" flatten="true">
+          <fileset refid="sources.dependency.fileset" />
+        </copy>
+        <copy todir="maven/javadoc" flatten="true">
+          <fileset refid="javadoc.dependency.fileset" />
+        </copy>
+   </target>
+
+  <target name="asdoc" depends="prepare" description="Builds the documentation">
+    <mkdir dir="${deploy.dir}/asdocs"/>
+    <asdoc srcdir="${asrc.dir}" libpath="${aslib.path}" destdir="${deploy.dir}/asdocs">
+      <arg value="-window-title"/>
+      <arg value="Flump Documentation"/>
+      <arg value="-main-title"/>
+      <arg value="Flump Documentation"/>
+      <arg value="-package"/>
+      <arg value="flump.display"/>
+      <arg value="Loads and draws flump content"/>
+      <arg value="-package"/>
+      <arg value="executor"/>
+      <arg value="Runs asynchronous tasks"/>
+      <arg value="-package"/>
+      <arg value="executor.load"/>
+      <arg value="Loads swfs and images asynchronously"/>
+    </asdoc>
+  </target>
+
+  <!-- Set maven.deploy.repo to deploy to a local maven repo:
+        ant -Dmaven.deploy.repo=file:///path/to/local/repo maven-deploy -->
+  <target name="maven-deploy" depends="swc"
+    description="Deploys build artifacts to a Maven repository.">
+    <mavendeploy file="${deploy.dir}/${ant.project.name}.swc" pom="pom.xml" srcdir="${asrc.dir}"/>
+  </target>
+</project>
